@@ -1,7 +1,5 @@
 import math
 
-import matplotlib.pyplot as plt
-import pandas as pd
 import streamlit as st
 
 from slope_core import (
@@ -49,36 +47,70 @@ def draw_slope(values, slices, roots, fellenius, bishop):
     y_candidates = [0, height, water_y, cy - radius, cy + radius * 0.12]
     xmin, xmax = min(x_candidates), max(x_candidates)
     ymin, ymax = min(y_candidates), max(y_candidates)
+    width_px, height_px = 1100, 580
+    pad = 56
 
-    fig, ax = plt.subplots(figsize=(11, 5.8), facecolor=BG)
-    ax.set_facecolor("#20272c")
-    ax.grid(color="#354039", linewidth=0.6)
+    def sx(x):
+        return pad + (x - xmin) / max(1e-9, xmax - xmin) * (width_px - 2 * pad)
 
-    ground_x = [xmin, 0, crest_x, xmax]
-    ground_y_vals = [0, 0, height, height]
-    ax.fill_between(ground_x, [ymin] * 4, ground_y_vals, color="#101612", alpha=1.0)
-    ax.plot([xmin, 0, crest_x, xmax], [0, 0, height, height], color=TEXT, linewidth=3)
+    def sy(y):
+        return height_px - pad - (y - ymin) / max(1e-9, ymax - ymin) * (height_px - 2 * pad)
+
+    def point_list(points):
+        return " ".join(f"{sx(x):.1f},{sy(y):.1f}" for x, y in points)
+
+    def line(x1, y1, x2, y2, color, stroke=2, dash="", marker=""):
+        return (
+            f'<line x1="{sx(x1):.1f}" y1="{sy(y1):.1f}" x2="{sx(x2):.1f}" y2="{sy(y2):.1f}" '
+            f'stroke="{color}" stroke-width="{stroke}" stroke-dasharray="{dash}" {marker}/>'
+        )
+
+    def text(x, y, value, color=TEXT, size=13, anchor="middle", weight="700"):
+        return (
+            f'<text x="{sx(x):.1f}" y="{sy(y):.1f}" fill="{color}" font-size="{size}" '
+            f'text-anchor="{anchor}" font-weight="{weight}" font-family="Arial, sans-serif">{value}</text>'
+        )
+
+    elements = [
+        f'<svg viewBox="0 0 {width_px} {height_px}" width="100%" height="580" xmlns="http://www.w3.org/2000/svg">',
+        "<defs>",
+        f'<marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="{ORANGE}"/></marker>',
+        "</defs>",
+        f'<rect x="0" y="0" width="{width_px}" height="{height_px}" rx="8" fill="#20272c"/>',
+    ]
+
+    for i in range(7):
+        gx = pad + i * (width_px - 2 * pad) / 6
+        gy = pad + i * (height_px - 2 * pad) / 6
+        elements.append(f'<line x1="{gx:.1f}" y1="{pad}" x2="{gx:.1f}" y2="{height_px - pad}" stroke="#354039" stroke-width="1"/>')
+        elements.append(f'<line x1="{pad}" y1="{gy:.1f}" x2="{width_px - pad}" y2="{gy:.1f}" stroke="#354039" stroke-width="1"/>')
+
+    ground_poly = [(xmin, ymin), (xmin, ground_y(xmin, height, slope_angle)), (0, 0), (crest_x, height), (xmax, height), (xmax, ymin)]
+    elements.append(f'<polygon points="{point_list(ground_poly)}" fill="#101612"/>')
+    elements.append(f'<polyline points="{point_list([(xmin, 0), (0, 0), (crest_x, height), (xmax, height)])}" fill="none" stroke="{TEXT}" stroke-width="4"/>')
 
     if ymin < water_y < ymax:
-        ax.axhspan(ymin, water_y, color="#143040", alpha=0.35)
-        ax.axhline(water_y, color=BLUE, linestyle=(0, (8, 5)), linewidth=2)
-        ax.text(xmin + (xmax - xmin) * 0.03, water_y + height * 0.03, f"NAF = {water_y:.2f} m", color=BLUE, weight="bold")
+        elements.append(
+            f'<rect x="{sx(xmin):.1f}" y="{sy(water_y):.1f}" width="{sx(xmax) - sx(xmin):.1f}" '
+            f'height="{sy(ymin) - sy(water_y):.1f}" fill="#143040" opacity="0.45"/>'
+        )
+        elements.append(line(xmin, water_y, xmax, water_y, BLUE, 2, "8 6"))
+        elements.append(text(xmin + (xmax - xmin) * 0.08, water_y + height * 0.05, f"NAF = {water_y:.2f} m", BLUE, 13, "start"))
 
-    arc_x, arc_y = [], []
+    arc_points = []
     for i in range(220):
         x = cx - radius + 2 * radius * i / 219
         y = circle_lower_y(x, cx, cy, radius)
         if y is not None:
-            arc_x.append(x)
-            arc_y.append(y)
-    ax.plot(arc_x, arc_y, color=GREEN, linestyle=(0, (6, 4)), linewidth=2)
-
-    ax.scatter([cx], [cy], color=ORANGE, s=45, zorder=5)
-    ax.text(cx, cy + height * 0.05, f"Centro ({cx:.2f}, {cy:.2f})", color=ORANGE, ha="center", weight="bold")
+            arc_points.append((x, y))
+    elements.append(f'<polyline points="{point_list(arc_points)}" fill="none" stroke="{GREEN}" stroke-width="3" stroke-dasharray="8 6"/>')
+    elements.append(f'<circle cx="{sx(cx):.1f}" cy="{sy(cy):.1f}" r="5" fill="{ORANGE}"/>')
+    elements.append(text(cx, cy + height * 0.06, f"Centro ({cx:.2f}, {cy:.2f})", ORANGE, 13))
 
     if roots:
-        ax.plot([cx, roots[0]], [cy, ground_y(roots[0], height, slope_angle)], color=GREEN, linestyle="--")
-        ax.text((cx + roots[0]) / 2, (cy + ground_y(roots[0], height, slope_angle)) / 2, f"R = {radius:.2f} m", color=GREEN, weight="bold")
+        root_y = ground_y(roots[0], height, slope_angle)
+        elements.append(line(cx, cy, roots[0], root_y, GREEN, 2, "6 5"))
+        elements.append(text((cx + roots[0]) / 2, (cy + root_y) / 2 + height * 0.04, f"R = {radius:.2f} m", GREEN, 13))
 
     for s in slices:
         top_l = ground_y(s.x_left, height, slope_angle)
@@ -88,28 +120,25 @@ def draw_slope(values, slices, roots, fellenius, bishop):
         bot_m = circle_lower_y(s.x_mid, cx, cy, radius)
         if bot_l is None or bot_r is None or bot_m is None:
             continue
-        ax.plot([s.x_left, s.x_left], [bot_l, top_l], color="#4d76ff", linewidth=0.9)
-        ax.plot([s.x_right, s.x_right], [bot_r, top_r], color="#4d76ff", linewidth=0.9)
-        ax.plot([cx, s.x_mid], [cy, bot_m], color="#d22b2b", linewidth=0.7, alpha=0.7)
-        ax.text(s.x_mid, bot_m - height * 0.035, str(s.number), color=MUTED, ha="center", va="top", fontsize=8, weight="bold")
+        elements.append(line(s.x_left, bot_l, s.x_left, top_l, "#4d76ff", 1))
+        elements.append(line(s.x_right, bot_r, s.x_right, top_r, "#4d76ff", 1))
+        elements.append(line(cx, cy, s.x_mid, bot_m, "#d22b2b", 1))
+        elements.append(text(s.x_mid, bot_m - height * 0.04, str(s.number), MUTED, 12))
         if len(slices) <= 14:
-            ax.text(s.x_mid, bot_m - height * 0.09, f"a={s.alpha_deg:.1f} deg", color="#89a7ff", ha="center", fontsize=7)
+            elements.append(text(s.x_mid, bot_m - height * 0.1, f"a={s.alpha_deg:.1f} deg", "#89a7ff", 10))
 
-    ax.annotate(f"H = {height:.2f} m", xy=(0, height), xytext=(-height * 0.25, height / 2), color=ORANGE, arrowprops=dict(arrowstyle="<->", color=ORANGE), ha="center", va="center")
-    ax.annotate(f"{crest_x:.2f} m", xy=(crest_x, 0), xytext=(crest_x / 2, ymin + (ymax - ymin) * 0.08), color=ORANGE, arrowprops=dict(arrowstyle="<->", color=ORANGE), ha="center")
-    ax.text(crest_x * 0.25, height * 0.15, f"beta = {slope_angle:.1f} deg", color=ORANGE, weight="bold")
+    elements.append(line(0, 0, 0, height, ORANGE, 2, "", 'marker-start="url(#arrow)" marker-end="url(#arrow)"'))
+    elements.append(text(-height * 0.08, height / 2, f"H = {height:.2f} m", ORANGE, 13, "end"))
+    elements.append(line(0, 0, crest_x, 0, ORANGE, 2, "", 'marker-start="url(#arrow)" marker-end="url(#arrow)"'))
+    elements.append(text(crest_x / 2, ymin + (ymax - ymin) * 0.08, f"{crest_x:.2f} m", ORANGE, 13))
+    elements.append(text(crest_x * 0.25, height * 0.15, f"beta = {slope_angle:.1f} deg", ORANGE, 13))
     if roots:
-        ax.annotate(f"Ancho falla = {roots[-1] - roots[0]:.2f} m", xy=(roots[-1], 0), xytext=((roots[0] + roots[-1]) / 2, ymin + (ymax - ymin) * 0.16), color=ORANGE, arrowprops=dict(arrowstyle="<->", color=ORANGE), ha="center")
+        elements.append(line(roots[0], 0, roots[-1], 0, ORANGE, 2, "", 'marker-start="url(#arrow)" marker-end="url(#arrow)"'))
+        elements.append(text((roots[0] + roots[-1]) / 2, ymin + (ymax - ymin) * 0.17, f"Ancho falla = {roots[-1] - roots[0]:.2f} m", ORANGE, 13))
 
-    ax.set_title("Talud, NAF, circulo de falla y dovelas", color=TEXT, loc="left", fontweight="bold")
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(ymin, ymax)
-    ax.tick_params(colors=MUTED)
-    for spine in ax.spines.values():
-        spine.set_color("#354039")
-    ax.set_xlabel("x (m)", color=MUTED)
-    ax.set_ylabel("y (m)", color=MUTED)
-    return fig
+    elements.append(f'<text x="{pad}" y="28" fill="{TEXT}" font-size="16" font-weight="900" font-family="Arial, sans-serif">Talud, NAF, circulo de falla y dovelas</text>')
+    elements.append("</svg>")
+    return "\n".join(elements)
 
 
 st.set_page_config(page_title="Estabilidad de taludes", layout="wide")
@@ -194,24 +223,22 @@ with col2:
 with col3:
     st.markdown(f"<div class='metric-card'><div class='metric-label'>CIRCULO / DOVELAS</div><div class='metric-value'>{values['slices']} dovelas</div></div>", unsafe_allow_html=True)
 
-st.pyplot(draw_slope(values, slices_data, roots, fellenius, bishop), clear_figure=True)
+st.markdown(draw_slope(values, slices_data, roots, fellenius, bishop), unsafe_allow_html=True)
 
 st.subheader("Tabla por dovela")
-table = pd.DataFrame(
-    [
-        {
-            "Dovela": s.number,
-            "Area (m2)": s.area,
-            f"W ({force_unit})": from_kn(s.weight, conversion_factor),
-            f"uL ({force_unit})": from_kn(s.pore_force, conversion_factor),
-            "alpha (deg)": s.alpha_deg,
-            "L arco (m)": s.base_length,
-            f"N' ({force_unit})": from_kn(s.effective_normal, conversion_factor),
-            f"T ({force_unit})": from_kn(s.shear, conversion_factor),
-        }
-        for s in slices_data
-    ]
-)
+table = [
+    {
+        "Dovela": s.number,
+        "Area (m2)": round(s.area, 3),
+        f"W ({force_unit})": round(from_kn(s.weight, conversion_factor), 3),
+        f"uL ({force_unit})": round(from_kn(s.pore_force, conversion_factor), 3),
+        "alpha (deg)": round(s.alpha_deg, 3),
+        "L arco (m)": round(s.base_length, 3),
+        f"N' ({force_unit})": round(from_kn(s.effective_normal, conversion_factor), 3),
+        f"T ({force_unit})": round(from_kn(s.shear, conversion_factor), 3),
+    }
+    for s in slices_data
+]
 st.dataframe(table, use_container_width=True, hide_index=True)
 
 with st.expander("Valores usados"):
