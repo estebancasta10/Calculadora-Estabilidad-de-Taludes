@@ -18,6 +18,8 @@ streamlit run streamlit_app.py
 
 Para Streamlit Cloud usa `streamlit_app.py` como archivo principal. No uses `slope_stability_tool.py` en Streamlit Cloud porque esa version usa `tkinter`, y Streamlit Cloud no incluye interfaz grafica de escritorio.
 
+Todas las herramientas estan firmadas por Gabriel Esteban Castaneda Barreto y tienen opcion para generar un informe tecnico en PDF.
+
 ## Calculadora CBR en Streamlit
 
 La herramienta de CBR esta en `cbr_tool.py` y se ejecuta asi:

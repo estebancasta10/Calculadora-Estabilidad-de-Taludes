@@ -1,7 +1,9 @@
 import math
 import tkinter as tk
 from dataclasses import dataclass
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
+
+from report_utils import AUTHOR, build_technical_pdf
 
 
 BG = "#111513"
@@ -326,7 +328,7 @@ class SlopeApp(tk.Tk):
         ).pack(side="left")
         tk.Label(
             header,
-            text="Fellenius / Bishop simplificado",
+            text=f"Autor: {AUTHOR}",
             fg=MUTED,
             bg=BG,
             font=("Arial", 9, "bold"),
@@ -422,6 +424,19 @@ class SlopeApp(tk.Tk):
             btns,
             text="LIMPIAR",
             command=self.reset_defaults,
+            bg=PANEL_2,
+            fg=TEXT,
+            activebackground="#2b332e",
+            activeforeground=TEXT,
+            relief="flat",
+            font=("Arial", 10, "bold"),
+            padx=18,
+            pady=10,
+        ).pack(side="left", fill="x", expand=True, padx=(8, 0))
+        tk.Button(
+            btns,
+            text="PDF",
+            command=self.export_pdf,
             bg=PANEL_2,
             fg=TEXT,
             activebackground="#2b332e",
@@ -574,6 +589,65 @@ class SlopeApp(tk.Tk):
         self.auto_circle.set(True)
         self.auto_slices.set(True)
         self.calculate()
+
+    def export_pdf(self):
+        if not self.values or not self.slices or self.last_fellenius is None or self.last_bishop is None:
+            messagebox.showwarning("Sin resultados", "Primero calcula el talud para generar el informe.")
+            return
+        path = filedialog.asksaveasfilename(
+            title="Guardar informe tecnico",
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+            initialfile="informe_tecnico_taludes.pdf",
+        )
+        if not path:
+            return
+        table_rows = [
+            [
+                s.number,
+                f"{s.area:.3f}",
+                f"{s.weight:.3f}",
+                f"{s.pore_force:.3f}",
+                f"{s.alpha_deg:.3f}",
+                f"{s.base_length:.3f}",
+                f"{s.effective_normal:.3f}",
+                f"{s.shear:.3f}",
+            ]
+            for s in self.slices
+        ]
+        pdf_bytes = build_technical_pdf(
+            "Informe tecnico - Estabilidad de taludes",
+            [
+                (
+                    "Descripcion",
+                    [
+                        "Informe tecnico de estabilidad de taludes por Fellenius y Bishop simplificado.",
+                        f"Autor: {AUTHOR}.",
+                    ],
+                ),
+                (
+                    "Resultados principales",
+                    [
+                        f"Factor de seguridad Fellenius: {self.last_fellenius:.3f}.",
+                        f"Factor de seguridad Bishop simplificado: {self.last_bishop:.3f}.",
+                        f"Numero de dovelas: {self.values['slices']}.",
+                        f"Centro del circulo: X={self.values['cx']:.3f} m, Y={self.values['cy']:.3f} m.",
+                        f"Radio del circulo: {self.values['radius']:.3f} m.",
+                    ],
+                ),
+                ("Datos usados", [f"{key}: {value}" for key, value in self.values.items()]),
+            ],
+            tables=[
+                {
+                    "title": "Tabla por dovela",
+                    "columns": ["Dovela", "Area", "W", "uL", "alpha", "L", "N'", "T"],
+                    "rows": table_rows,
+                }
+            ],
+        )
+        with open(path, "wb") as pdf_file:
+            pdf_file.write(pdf_bytes)
+        messagebox.showinfo("Informe generado", f"Se guardo el informe tecnico en:\n{path}")
 
     def fill_table(self):
         self.table.delete(*self.table.get_children())

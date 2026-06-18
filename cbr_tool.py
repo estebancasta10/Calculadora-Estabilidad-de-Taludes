@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
+from report_utils import AUTHOR, add_streamlit_signature, build_technical_pdf
+
 
 ORANGE = "#ff4b1f"
 BG = "#111513"
@@ -307,6 +309,52 @@ for row in results:
     )
 st.dataframe(display_rows, use_container_width=True, hide_index=True)
 
+pdf_sections = [
+    (
+        "Descripcion",
+        [
+            "Informe tecnico de calculo CBR a partir de datos de penetracion y carga.",
+            f"Unidad de penetracion usada en pantalla: {penetration_unit}.",
+            f"Unidad de carga usada en pantalla: {load_unit}.",
+            "Los calculos internos se realizan en mm y kN.",
+        ],
+    ),
+    (
+        "Resultados principales",
+        [
+            f"CBR adoptado mayor: {'N/D' if best_result is None else format_number(best_result['CBR adoptado (%)']) + '%'}",
+            f"Promedio de grupos: {'N/D' if not valid_results else format_number(np.mean([row['CBR adoptado (%)'] for row in valid_results])) + '%'}",
+            f"Coeficiente de variacion: {'N/D' if cov is None else format_number(cov) + '%'}",
+            f"Autor: {AUTHOR}.",
+        ],
+    ),
+    (
+        "Criterio",
+        [
+            "CBR 2.5 mm = carga interpolada a 2.5 mm / 13.24 kN * 100.",
+            "CBR 5.0 mm = carga interpolada a 5.0 mm / 19.96 kN * 100.",
+            "El CBR adoptado toma el mayor entre 2.5 mm y 5.0 mm cuando ambos existen.",
+        ],
+    ),
+]
+pdf_bytes = build_technical_pdf(
+    "Informe tecnico - Calculo CBR",
+    pdf_sections,
+    tables=[
+        {
+            "title": "Resultados CBR",
+            "columns": list(display_rows[0].keys()) if display_rows else [],
+            "rows": [list(row.values()) for row in display_rows],
+        }
+    ],
+)
+st.download_button(
+    "Descargar informe tecnico PDF",
+    data=pdf_bytes,
+    file_name="informe_tecnico_cbr.pdf",
+    mime="application/pdf",
+)
+
 with st.expander("Criterio usado"):
     st.markdown(
         """
@@ -316,3 +364,5 @@ with st.expander("Criterio usado"):
         - Si la penetracion 2.5 mm o 5.0 mm queda fuera del rango de datos, ese punto no se calcula.
         """
     )
+
+add_streamlit_signature(st)

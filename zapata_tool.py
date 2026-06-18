@@ -2,6 +2,8 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
+from report_utils import AUTHOR, add_streamlit_signature, build_technical_pdf
+
 # Configuración de la página
 st.set_page_config(page_title="Diseño de Zapatas Aisladas", layout="wide")
 
@@ -152,3 +154,46 @@ with col2:
         ax2.set_title(f"Corte Estructural (Espesor H = {H_prop:.2f}m)", color='white')
         ax2.grid(color='#2e3440', linestyle='--', linewidth=0.5)
         st.pyplot(fig2)
+
+pdf_sections = [
+    (
+        "Descripcion",
+        [
+            "Informe tecnico de diseno de zapata aislada con verificacion de presion y refuerzo.",
+            f"Autor: {AUTHOR}.",
+        ],
+    ),
+    (
+        "Datos de entrada",
+        [
+            f"Carga de servicio P: {P_servicio:.2f} kN.",
+            f"Carga ultima estimada: {P_ultima:.2f} kN.",
+            f"Dimensiones de zapata: B={B_prop:.2f} m, L={L_prop:.2f} m, H={H_prop:.2f} m.",
+            f"Columna: {c_ancho:.2f} m x {c_largo:.2f} m.",
+            f"Concreto f'c: {f_c} MPa.",
+            f"Acero fy: {f_y} MPa.",
+            f"Capacidad admisible del suelo: {q_adm:.2f} kPa.",
+        ],
+    ),
+    (
+        "Resultados",
+        [
+            f"Area de zapata: {Área:.3f} m2.",
+            f"Presion de servicio: {presion_servicio:.2f} kPa.",
+            f"Presion ultima: {presion_ultima:.2f} kPa.",
+            f"Verificacion de suelo: {'Cumple' if suelo_pasa else 'No cumple'}.",
+            f"Momento ultimo: {M_u:.2f} kNm/m.",
+            f"Acero requerido adoptado: {As_diseno:.1f} mm2/m.",
+            f"Refuerzo sugerido: Varillas #5 c/{separacion * 100:.0f} cm en ambas direcciones.",
+        ],
+    ),
+]
+pdf_bytes = build_technical_pdf("Informe tecnico - Zapata aislada", pdf_sections)
+st.download_button(
+    "Descargar informe tecnico PDF",
+    data=pdf_bytes,
+    file_name="informe_tecnico_zapata.pdf",
+    mime="application/pdf",
+)
+
+add_streamlit_signature(st)

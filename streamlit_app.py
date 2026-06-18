@@ -2,6 +2,7 @@ import math
 
 import streamlit as st
 
+from report_utils import AUTHOR, add_streamlit_signature, build_technical_pdf
 from slope_core import (
     calculate_slices,
     circle_lower_y,
@@ -241,8 +242,53 @@ table = [
 ]
 st.dataframe(table, use_container_width=True, hide_index=True)
 
+display_values = dict(values)
+for key in ("cohesion", "gamma", "gamma_sat", "gamma_water"):
+    display_values[key] = from_kn(display_values[key], conversion_factor)
+
+pdf_sections = [
+    (
+        "Descripcion",
+        [
+            "Informe tecnico de estabilidad de taludes por Fellenius y Bishop simplificado.",
+            f"Sistema de unidades seleccionado: {unit_system}.",
+            f"Autor: {AUTHOR}.",
+        ],
+    ),
+    (
+        "Resultados principales",
+        [
+            f"Factor de seguridad Fellenius: {fellenius:.3f}.",
+            f"Factor de seguridad Bishop simplificado: {bishop:.3f}.",
+            f"Numero de dovelas: {values['slices']}.",
+            f"Centro del circulo: X={values['cx']:.3f} m, Y={values['cy']:.3f} m.",
+            f"Radio del circulo: {values['radius']:.3f} m.",
+        ],
+    ),
+    (
+        "Datos usados",
+        [f"{key}: {value}" for key, value in display_values.items()],
+    ),
+]
+pdf_bytes = build_technical_pdf(
+    "Informe tecnico - Estabilidad de taludes",
+    pdf_sections,
+    tables=[
+        {
+            "title": "Tabla por dovela",
+            "columns": list(table[0].keys()) if table else [],
+            "rows": [list(row.values()) for row in table],
+        }
+    ],
+)
+st.download_button(
+    "Descargar informe tecnico PDF",
+    data=pdf_bytes,
+    file_name="informe_tecnico_taludes.pdf",
+    mime="application/pdf",
+)
+
 with st.expander("Valores usados"):
-    display_values = dict(values)
-    for key in ("cohesion", "gamma", "gamma_sat", "gamma_water"):
-        display_values[key] = from_kn(display_values[key], conversion_factor)
     st.json(display_values)
+
+add_streamlit_signature(st)
