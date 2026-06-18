@@ -18,6 +18,25 @@ streamlit run streamlit_app.py
 
 Para Streamlit Cloud usa `streamlit_app.py` como archivo principal. No uses `slope_stability_tool.py` en Streamlit Cloud porque esa version usa `tkinter`, y Streamlit Cloud no incluye interfaz grafica de escritorio.
 
+## Calculadora CBR en Streamlit
+
+La herramienta de CBR esta en `cbr_tool.py` y se ejecuta asi:
+
+```powershell
+streamlit run cbr_tool.py
+```
+
+Para Streamlit Cloud o GitHub, selecciona `cbr_tool.py` como archivo principal si quieres publicar directamente la calculadora CBR.
+
+La calculadora permite:
+
+- Agregar mas datos en una tabla editable.
+- Cambiar unidades de penetracion entre `mm` y `pulgadas`.
+- Cambiar unidades de carga entre `kN`, `kgf` y `lbf`.
+- Graficar la curva carga-penetracion y las rectas de tendencia.
+- Calcular CBR a `2.5 mm` y `5.0 mm`.
+- Separar graficos cuando hay varios grupos con dispersion alta.
+
 ## Que calcula
 
 - Dibuja el talud, el circulo de falla y el numero de dovelas indicado.
